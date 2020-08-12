@@ -1,0 +1,3 @@
+include ':carsqlite'
+include ':app'
+rootProject.name = "SQRoom"
