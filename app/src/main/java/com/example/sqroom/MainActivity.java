@@ -7,6 +7,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import androidx.room.Room;
 
 import android.content.DialogInterface;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -37,7 +38,8 @@ public class MainActivity extends AppCompatActivity {
                 .allowMainThreadQueries()
                 .build();
 
-        carList.addAll(database.getCarDao().getAllCars());
+        new getAllCarsAsyncTask().execute();
+
         addBtn = findViewById(R.id.addBtn);
 
         buildRecyclerView();
@@ -50,10 +52,12 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onDeleteClick(int position) {
-                database.getCarDao().deleteCar(carList.get(position));
+                Car c = carList.get(position);
+
+                new deleteCarAsyncTask().execute(c);
+
                 carList.remove(position);
                 Toast.makeText(MainActivity.this, "Car has been deleted!", Toast.LENGTH_SHORT).show();
-                adapter.notifyItemRemoved(position);
             }
         });
 
@@ -83,19 +87,22 @@ public class MainActivity extends AppCompatActivity {
                 c.setModel(carName.getText().toString());
                 c.setPrice(carPrice.getText().toString());
                 carList.set(position,c);
-                database.getCarDao().updateCar(c);
+
+                new editCarAsyncTask().execute(c);
+
                 Toast.makeText(MainActivity.this, "Car has been updated!", Toast.LENGTH_SHORT).show();
-                adapter.notifyItemChanged(position);
             }
         });
 
         dialog.setNegativeButton("DELETE", new DialogInterface.OnClickListener() {
             @Override
             public void onClick(DialogInterface dialogInterface, int i) {
-                database.getCarDao().deleteCar(carList.get(position));
+                Car c = carList.get(position);
+
+                new deleteCarAsyncTask().execute(c);
+
                 carList.remove(position);
                 Toast.makeText(MainActivity.this, "Car has been deleted!", Toast.LENGTH_SHORT).show();
-                adapter.notifyItemRemoved(position);
             }
         });
         dialog.show();
@@ -129,14 +136,8 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 Car c = new Car(0,carModel.getText().toString(), carPrice.getText().toString());
-                long id =  database.getCarDao().addCar(c);
 
-                Car car  = database.getCarDao().getCar(id);
-
-                if (car != null){
-                    carList.add(0,car);
-                    adapter.notifyItemInserted(0);
-                }
+                new addNewCarAsyncTask().execute(c);
 
                 Toast.makeText(MainActivity.this, "New Car is added!", Toast.LENGTH_SHORT).show();
 
@@ -159,6 +160,72 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(adapter);
     }
 
+    private  class getAllCarsAsyncTask extends AsyncTask <Void, Void , Void>{
 
+        @Override
+        protected Void doInBackground(Void... voids) {
 
+            // делает работу асинхронно на вторичном потоке
+            carList. addAll(database.getCarDao().getAllCars());
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+
+            // метод срабатывает как только doInBackground заканчивает свою работу
+            super.onPostExecute(aVoid);
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    private  class addNewCarAsyncTask extends AsyncTask <Car, Void , Void>{
+
+        @Override
+        protected Void doInBackground(Car... cars) {
+
+            long id =  database.getCarDao().addCar(cars[0]);
+            Car car  = database.getCarDao().getCar(id);
+            if (car != null){
+                carList.add(0,car);
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    private  class editCarAsyncTask extends AsyncTask <Car, Void , Void>{
+
+        @Override
+        protected Void doInBackground(Car... cars) {
+            database.getCarDao().updateCar(cars[0]);
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    private  class deleteCarAsyncTask extends AsyncTask <Car, Void , Void>{
+
+        @Override
+        protected Void doInBackground(Car... cars) {
+            database.getCarDao().deleteCar(cars[0]);
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            super.onPostExecute(aVoid);
+            adapter.notifyDataSetChanged();
+        }
+    }
 }
